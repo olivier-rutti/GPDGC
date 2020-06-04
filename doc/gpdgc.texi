@@ -1,0 +1,1163 @@
+\input texinfo                  @c -*- Texinfo -*-
+@c %**start of header
+@setfilename gpdgc.info
+@settitle The Libgpdgc Reference Manual
+@set VERSION 1.0
+@set UPDATED 01.08.2020
+@c Unify some of the indices.
+@syncodeindex tp fn
+@syncodeindex pg fn
+@c %**end of header
+@copying
+This manual is for Libgpdgc (version @value{VERSION}, @value{UPDATED})
+
+@noindent
+Copyright @copyright{} 2020 Olivier Rutti
+
+@quotation
+Permission is granted to copy, distribute and/or modify this document
+under the terms of the GNU Affero General Public License as published by the
+Free Software Foundation; either version 3 of the License, or (at your
+option) any later version. The text of the license can be found in the
+section entitled ``GNU Affero General Public License''.
+@end quotation
+@end copying
+
+@dircategory GNU Libraries
+@direntry
+* libgpdgc: Group communication library
+@end direntry
+
+@c A couple of macros with no effect on texinfo
+@c but used by the yat2m processor.
+@macro manpage {a}
+@end macro
+@macro mansect {a}
+@end macro
+@macro manpause
+@end macro
+@macro mancont
+@end macro
+
+@c
+@c Printing stuff taken from gcc.
+@c
+@macro gnupgtabopt{body}
+@code{\body\}
+@end macro
+
+
+@c
+@c Titlepage
+@c
+@setchapternewpage odd
+@titlepage
+@title The Libgpdgc Reference Manual
+@subtitle Version @value{VERSION}
+@subtitle @value{UPDATED}
+@author Olivier Rutti (@email{olivier.rutti@@opengroupware.ch})
+
+@page
+@vskip 0pt plus 1filll
+@insertcopying
+@end titlepage
+
+@ifnothtml
+@c @summarycontents
+@contents
+@page
+@end ifnothtml
+
+
+@ifnottex
+@node Top
+@top The Libgpdgc Library
+@insertcopying
+@end ifnottex
+
+
+@menu
+* Introduction::                 What is Libgpdgc.
+* Preparation::                  How to include Libgpdgc in your code.
+* Usage::                        How to use Libgpdgc.
+* Architecture::                 How Libgpdgc works internally.
+
+Appendices
+
+* Test Framework::               Description of the test framework.
+* Copying::                      The GNU Affero General Public License.
+@end menu
+
+@ifhtml
+@page
+@c @summarycontents
+@contents
+@end ifhtml
+
+
+@c **********************************************************
+@c *******************  Introduction  ***********************
+@c **********************************************************
+@node Introduction
+@chapter Introduction
+
+Libgpdgc is a library providing group communication abstractions that are
+ tolerant to byzanzine faults (e.g., malicious processes);
+ gpdgc standing for GNU practical dynamic group communication.
+In short, @emph{group communication} defines a set of primitives which can
+ be used to build fault tolerant distributed systems.
+As an example, group communication simplifies implementation of the well-known
+ @emph{passive} and @emph{active} replication schemes
+
+One of the main primitive provided by our library guarantees that
+ all processes in a specific group deliver the same set of messages
+ (i.e., @emph{reliable broadcast}).
+The library also implements @emph{atomic broadcast} which additionnally 
+ ensures that messages are delivered in the same order by the
+ members of the group.
+Finally, the library offers means to dynamically modify the members of a group:
+ e.g., a process can be removed when suspected to be malicious,
+ or new processes can be added to the group to increase system reliability.
+
+@menu
+* Getting Started::             How to use this manual.
+* Features::                    A glance at Libgpdgc's features.
+@end menu
+
+@node Getting Started
+@section Getting Started
+
+This manual documents the application programming interface (API) of Libgpdgc.
+All functions and data types provided by the library are explained, 
+ but the reader is assumed to possess basic knowledge about distributed systems. 
+
+This manual can be used in several ways.
+If read from the beginning to the end,
+ it gives a good introduction into the library
+ and how it can be used in an application. 
+Forward references are included where necessary. 
+Later on, the manual can be used as a reference manual to get just
+ the information needed about any particular interface of the library. 
+
+
+@node Features
+@section Features
+
+Libgpdgc might have a couple of advantages over other libraries doing
+a similar job.
+
+@table @asis
+@item It's Free Software
+Anybody can use, modify, and redistribute it under the terms of
+ the GNU Affero General Public License (@pxref{Copying}).
+
+@item It provides primitives for dynamic group communication 
+Libgpdgc implements the main primitives to broadcast reliable (ordered)
+ messages to a specific group of processes which can be dynamically modified.
+
+@item It tolerates different level of faults
+The library is able to cope with arbitrary failures, 
+ but can be configured to tolerate simpler faults;
+ e.g., it can be configured to tolerate only process crashes instead of 
+  malicious processes.
+Obviously, dealing with simpler faults has the advantage to simplfiy the
+ underlying distributed protocols used to ensure message reliability,
+ and thus, has a positive impact on the performance of the library.
+@end table
+
+@c **********************************************************
+@c *******************  Preparation  ************************
+@c **********************************************************
+@node Preparation 
+@chapter Preparation 
+
+Using Libgpdgc requires minimal changes to your sources and build system.
+The necessary changes are explained in this chapter.
+
+@menu
+* Header::                      What header file you need to include.
+* Building sources::            How to build sources using the library.
+@end menu
+
+
+@node Header
+@section Header
+
+All public interfaces (data types and functions) of the library are defined
+ in the header file @file{gpdgc.h}.  
+You must include it in all source files using the library, 
+ either directly or through some other header file, like this:
+
+@example
+#include <gpdgc.h>
+@end example
+
+@noindent
+The name space of Libgpdgc is @code{gpdgc_*} for function and type names,
+ and @code{GPDGC_*} for other symbols.
+In addition the same name prefixes with one prepended underscore are reserved
+ for internal use and should never be used by an application.
+Note that Libgpdgc uses libgcrypt and glib, which uses their own name spaces
+ (@code{gcrypt_*}, @code{gpg_*}, @code{g_*} as name space for function and
+ type names, and @code{GCRYPT_*}, @code{GPG_*}, @code{G_*} for other symbols).
+
+@node Building sources
+@section Building sources
+
+If you want to compile a source file including the `gpdgc.h' header file,
+ you must make sure that the compiler can find it in the directory hierarchy.
+This is accomplished by adding the path to the directory in which the header 
+ file is located to the compilers include file search path
+ (via the @option{-I} option).
+The following example shows how it can be used at the command line:
+
+@example
+gcc -c foo.c -I/usr/local/include/
+@end example
+
+@noindent
+A similar problem occurs when linking the program with the library.
+Again, the compiler has to find the library files.
+For this to work, the path to the library files has to be added
+ to the library search path (via the @option{-L} option).
+The example below shows how to link @file{foo.o} with the Libgpdgc library
+ to a program @command{foo}.
+
+@example
+gcc -o foo foo.o -L/usr/local/lib/ -lgpdgc 
+@end example
+
+@noindent
+Of course you can also combine both examples to a single command:
+
+@example
+gcc -o foo foo.c -I/usr/local/include/ -L/usr/local/lib/ -lgpdgc 
+@end example
+
+@c **********************************************************
+@c **********************  Usage  ***************************
+@c **********************************************************
+@node Usage 
+@chapter Usage 
+
+This chapter describes all the primitives, grouped by topics,
+ provided by the library.
+The description relies on a few concepts that are now briefly introduced.
+The processes in a group are called @emph{servers}, 
+ and those interacting with the group are called @emph{clients}.
+Each time a group is modified (either by adding or removing a server), 
+ a new instance of the group is created.
+Such an instance is called a @emph{view}.
+A server is @emph{correct} in a view if and only if no fault occurs on the
+ server during the view lifetime and the server is not excluded from the view
+ (i.e., the next view considered by the server contains this server).
+By extension, a server is @emph{correct} if it is correct in all views.
+
+Roughly speaking, a @emph{reliable} message is eventually delivered by correct
+ servers, and each server delivers the message in the same view. 
+As a result, for each view, all servers that are correct in that view,
+ deliver the same set of reliable messages.
+Furthermore, @emph{atomic} messages are reliable messages such that all
+ servers deliver the messages in the same order
+ (for more details, @pxref{General broadcast}).
+
+@menu
+* Group initialisation::        How to initialize a group of processes.
+* Group subscriptions::         How to initialize clients.
+* Group messages::              How to send message to/from a group.
+* Group management::            How to dynamically update the group members.
+* Group monitoring::            How to monitor a group.
+* Memory::                      How to avoid memory issues.
+@end menu
+
+@node Group initialisation
+@section Group initialisation
+
+A group is initialised in two steps.
+Firstly, each server must create the data structure required by
+ group communication primitives,
+ which is done by invoking function @code{gpdgc_create_server}.
+Since the algorithms implementing the primitives rely on many parameters,
+ the presentation of the parameters is splitted into several categories.
+Note that, for the first two categories, parameter values must be the same
+ for every server of a specific group.
+
+@deftypefun {gpdgc_server} gpdgc_create_server@
+(gpdgc_process_fault_model @var{process_model},@
+        gpdgc_channel_fault_model @var{channel_model},@
+        gpdgc_validation_type @var{validation},@
+        gpdgc_election_type @var{election},@
+        struct sockaddr *@var{self},@
+        gcry_sexp_t @var{private_key},@
+        gcry_sexp_t @var{public_key},@
+        unsigned short @var{max_servers},@
+        unsigned short @var{max_clients},@
+        unsigned short @var{max_slot},@
+        unsigned long @var{max_cache},@
+        unsigned short @var{max_retention_cache},@
+        unsigned int @var{max_futures},@
+        unsigned short @var{max_client_replies},@
+        size_t @var{max_message_size},@
+        unsigned int @var{network_buffer_size},@
+        unsigned int @var{tick_length},@
+        unsigned short @var{clock_period},@
+        unsigned short @var{clean_cache_period},@
+        unsigned short @var{minimal_resend_period},@
+        unsigned short @var{resend_period},@
+        unsigned long @var{round_window_initial},@
+        unsigned long @var{round_window_increment},@
+        void (*@var{adeliver}) (struct sockaddr *origin, unsigned long id, void *message, size_t size),@
+        void (*@var{rdeliver}) (struct sockaddr *origin, unsigned long id, void *message, size_t size),@
+        void (*@var{inform}) (gpdgc_event event))
+@end deftypefun
+@sp 1
+
+@noindent
+@strong{Fault Model: }
+Parameters @var{process_model} and @var{channel_model} specify
+ the expected fault models for respectively processes and channels.
+Processes may either only crash (@code{GPDGC_CRASH_STOP_MODEL}),
+ or be arbitrarily faulty (@code{GPDGC_BYZANTINE_MODEL}).
+On the other hand, channels may either allow sent messages to be modified
+ by the channel (@code{GPDGC_CORRUPTED_CHANNELS})
+ or not (@code{GPDGC_SECURE_CHANNELS}).
+
+@noindent
+@strong{Consensus Algorithm: }
+The heart of the library is the consensus protocol (@pxref{Consensus}). 
+This algorithm, more particularly, the process of validating values on 
+ which servers may decide, can be parameterized with two parameters.
+The parameter @var{validation} defines how validated values are recovered.
+It has a strong impact on the maximum number of faulty servers,
+ that can be tolerated in a group of @math{n} servers,
+ without breaking the guarantees provided by the library.
+Furthermore, there is a tradeoff between the maximum number of faults and
+ the complexity of the algorithm.
+The following three validation processes, ordered by complexity, 
+ have been implemented:
+@itemize
+@item
+@code{GPDGC_NO_VALIDATION} tolerates at most @math{(n-1)/3} crashes
+ or @math{(n-1)/5} byzantine faults 
+@item
+@code{GPDGC_AMNESIC_VALIDATION} tolerates at most @math{(n-1)/2} crashes
+ or @math{(n-1)/4} byzantine faults
+@item
+@code{GPDGC_FULL_VALIDATION} tolerates at most @math{(n-1)/2} crashes
+ or @math{(n-1)/3} byzantine faults.
+Note that @code{GPDGC_FULL_VALIDATION} has,
+ contrary to other validation processes, two serious drawbacks.
+First, it requires all messages, even reliable messages, to be totally ordered.
+Second, it does not allow memory usage to be strictly bound.
+@end itemize
+
+The second parameter, named @var{election}, specifies the processes involved
+ in the validation process.
+Either all processes are involved (@code{GPDGC_NO_ELECTION}),
+ or only a single process, changing every round,
+ is involved (@code{GPDGC_ROTATING_COORDINATOR}).
+The latter possibility is only relevant
+ in a context where processes may at worst crash
+ and with @code{GPDGC_AMNESIC_VALIDATION} or @code{GPDGC_FULL_VALIDATION} 
+
+@noindent
+@strong{Server Identity: } 
+The ip address of the local server is specified by parameter @var{self}.
+Parameters @var{private_key} and @var{public_key} is a pair of RSA keys,
+ which can be omitted when channels are secure. 
+When byzantine faults are tolerated, specifying a pair of keys reduces the
+ number of exchanges required to implement the basic round mecanism required
+ by the consensus algorithm (@pxref{Heard-Of}). 
+
+@noindent
+@strong{Memory Usage: } 
+The maximal size of a group,
+ and the maximal number of clients that concurrently interact with the group, 
+ are respectively specified by @var{max_servers} and @var{max_clients}.
+The maximal number of messages sent but not yet delivered
+ is set by parameter @var{max_slot}.
+
+The parameter @var{max_cache} specifies the amount of memory 
+ dedicated to store the messages that have been delivered locally
+ but not delivered yet by all servers in the group.@footnote{In order to
+ ensure that all non-faulty servers deliver a specific message,
+ the message must be kept in memory until all non-faulty servers have
+ delivered the message.}
+The removal of a message from memory can be delayed with a specific
+ number of phases with parameter @var{max_retention_cache}.
+A high value might increase the chance for an excluded server to deliver 
+ all messages before being excluded, but may decrease performance if
+ the parameter @var{max_cache} has been underestimated.
+
+At most @var{max_futures} messages for future rounds can be cached, 
+ and at most @var{max_client_replies} messages can be concurrently sent to
+ each client.
+Finally, the size of messages and the network buffer (expressed in bytes) 
+ are respectively limited by parameters @var{max_message_size} and
+ @var{network_buffer_size}.
+
+@page
+@noindent
+@strong{Scheduler: } 
+The period between the execution of two tasks is based on @emph{ticks}, 
+ which length in milliseconds is set with parameter @var{tick_length}.
+Parameters @var{clock_period} and @var{clean_cache_period} specify the number
+ of ticks between sending a message corresponding respectively
+ to the local clock and
+ to the processes (clients and servers) that can be removed from the cache.
+
+In order to ensure message reliability over UDP channels,
+ messages might require to be resend. 
+The minimal and maximal period between two sendings of a specific message are
+ defined respectively by @var{minimal_resend_period} and @var{resend_period}.
+
+The length of rounds (@pxref{Heard-Of}) is determined by two parameters.
+The first round has a length of @var{round_window_initial} ticks.
+The length of the round@tie{}@math{n} is computed
+ by adding @var{round_window_increment} to length of round @math{n-1}.
+
+@noindent
+@strong{Callback Functions: } 
+Ordered and non-ordered messages are delivered by respectively calling
+ functions @var{adeliver} and @var{rdeliver}.
+Each message is identified
+ by its sender @var{origin} and its identifier @var{id}.
+Note that the callback functions are responsible to free messages from memory.
+Finally, monitoring informations (@pxref{Group monitoring})
+ are delivered by calling function @var{inform}.
+
+@sp 1
+
+The second step to initialise a group is to set the first view.
+This is achieved by invoking function @code{gpdgc_init_view} with
+ exactly the same parameter values on each initial member of the group.
+
+@deftypefun {int} gpdgc_init_view@
+(gpdgc_server @var{server},@
+        GSList *@var{addresses},@
+        GSList *@var{keys},@
+        gcry_sexp_t @var{trusted_key})
+@end deftypefun
+@sp 1
+
+@noindent
+The initial group is specified by the list of ip addresses in @var{addresses}.
+Obviously, the local address must be included in this list.
+The list of public keys corresponding to the ip addresses
+ is specifed in the list @var{keys}.
+This list can be empty if and only if no local key has been specified upon
+ creation of the data structure.
+Finally, parameter @var{trusted_key} defines a public key.
+When a public key is specified, 
+ any request to dynamically add/remove processes to/from the group
+ must be signed using the corresponding private key.
+
+
+@node Group subscriptions
+@section Group subscriptions
+
+Similarly to the initialisation of a group, 
+ a client that subscribes to a group must execute two steps.
+Firstly, each client must create the data structure implementing the 
+ client primitives using function @code{gpdgc_create_client}.
+Parameters are similar to the parameter of function @code{gpdgc_create_server}
+ (@pxref{Group initialisation}), and are grouped using the same categories.
+
+@deftypefun {gpdgc_client} gpdgc_create_client@
+(gpdgc_process_fault_model @var{process_model},@
+        gpdgc_channel_fault_model @var{channel_model},@
+        gpdgc_validation_type @var{validation},@
+        struct sockaddr *@var{self},@
+        gcry_sexp_t @var{private_key},@
+        gcry_sexp_t @var{public_key},@
+        unsigned short @var{max_servers},@
+        unsigned short @var{max_pending_messages},@
+        unsigned short @var{max_pending_replies},@
+        size_t @var{max_message_size},@
+        unsigned int @var{network_buffer_size},@
+        unsigned int @var{tick_length},@
+        unsigned short @var{resend_period},@
+        void (*@var{deliver}) (unsigned long id, void *message, size_t size),@
+        void (*@var{inform}) (gpdgc_event event))
+@end deftypefun
+@sp 1
+
+@noindent
+@strong{Fault Model: }
+As for group initialisation,
+ parameters @var{process_model} and @var{channel_model} specify
+ the expected fault models for respectively processes and channels.
+
+@noindent
+@strong{Consensus Algorithm: }
+As for group initialisation,
+ parameter @var{validation} defines how validated values are recovered by 
+ the servers belonging to the group to which the client subscribe.
+
+@noindent
+@strong{Client Identity: }
+The ip address of the local client is specified by parameter @var{self}.
+Parameters @var{private_key} and @var{public_key} is the pair of RSA keys
+ corresponding to the local client.
+They can be omitted when channels are secure. 
+
+@noindent
+@strong{Memory Usage: }
+The maximal number of servers in the group to which the client subscribe 
+ is specified by @var{max_servers}.
+The parameter @var{max_pending_messages} limits the number of messages sent
+ by the client that are not yet known by servers.
+This value must be stricly smaller to the minimal value @var{max_slot}
+ specified by the servers of the group to which the client
+ subscribe.@footnote{This condition guarantees that, at any time, 
+ a client can request the removal of a server of the group.
+ Therefore, servers which prevent removing delivered messages from memory,
+ and therefore, prevent other servers from processing new messasges,
+ can be removed at any time.}
+The parameter @var{max_pending_replies} limits the number of awaited replies.
+If a client issues concurrently more messages than the maximal number
+ of awaited replies, then some reply may be lost.
+Finally, similarly to servers,
+ the size of messages and the network buffer (expressed in bytes) 
+ are respectively limited by parameters @var{max_message_size} and
+ @var{network_buffer_size}.
+
+@noindent
+@strong{Scheduler: } 
+As for servers, 
+ the period between the execution of two tasks is based on @emph{ticks}, 
+ which length in milliseconds is set with parameter @var{tick_length}.
+In order to ensure message reliability over UDP channels,
+ messages might require to be resend. 
+The period between two sendings of a specific message
+ is defined by @var{resend_period}.
+
+@noindent
+@strong{Callback Functions: } 
+Replies from the group of servers are delivered
+ by calling the function @var{deliver}.
+Note that this is the responsability of the function @var{deliver} to free 
+ a message from memory.
+Similarly to servers, monitoring informations (@pxref{Group monitoring})
+ are delivered by calling function @var{inform}.
+
+@sp 1
+
+The second step of client subscription is
+ the specification of the group to which the client subscribes.
+This is done by invoking function @code{gpdgc_subscribe_to_view}.
+
+@deftypefun {int} gpdgc_subscribe_to_view@
+(gpdgc_client @var{client},@
+        GSList *@var{servers},@
+        GSList *@var{keys})
+@end deftypefun
+
+@sp 1
+@noindent
+Parameters @var{servers} and @var{keys} correspond to the group 
+ (ip addresses and public keys) to which the client subscribe.
+The method @code{gpdgc_subscribe_to_view} blocks until the client has
+ effectively subscribed to the group.
+Note that, since a group can be dynamically updated,
+ the group to which the client subscribe will not necessarily contains
+ the processes specified in @var{servers} at the moment of the function call.
+
+Note that clients can at any time unsubscribe from a group by invoking 
+ function @code{gpdgc_unsubscribe_from_view}.
+Similary to subscription method, this method blocks until the client
+ has been effectively unsubscribed from the group.
+At this time, the data structure can be freed from memory
+ using function @code{gpdgc_close_client}.
+
+@deftypefun {int} gpdgc_unsubscribe_from_view(gpdgc_client @var{client})
+@end deftypefun
+
+@deftypefun {void} gpdgc_close_client(gpdgc_client @var{client})
+@end deftypefun
+
+@node Group messages 
+@section Group messages 
+
+A server can broadcast messages to all servers in its group (including itself). 
+Functions @code{gpdgc_reliable_broadcast} and @code{gpdgc_atomic_broadcast} 
+ allow to send respectively reliable and atomic messages.
+The size of messages is specified in bytes.
+
+@deftypefun {int} gpdgc_reliable_broadcast@
+(gpdgc_server @var{server}, void *@var{message}, size_t @var{size})
+@end deftypefun
+
+@deftypefun {int} gpdgc_atomic_broadcast@
+(gpdgc_server @var{server}, void *@var{message}, size_t @var{size})
+@end deftypefun
+@sp 1
+
+Similarly, clients can broadcast messages to the group to which they subscribed.
+Reliable and atomic messages are respectively sent using 
+ functions @code{gpdgc_reliable_multicast} and @code{gpdgc_atomic_multicast}.
+Note that the parameter @var{reply_id} is used by these functions to return
+ the identifier that can be later used by the servers to send the reply 
+ corresponding to the broadcasted message.
+
+@deftypefun {int} gpdgc_reliable_multicast@
+(gpdgc_client @var{client}, void *@var{message},@
+ size_t @var{size}, unsigned long *@var{reply_id})
+@end deftypefun
+
+@deftypefun {int} gpdgc_atomic_multicast@
+(gpdgc_client @var{client}, void *@var{message},@
+ size_t @var{size}, unsigned long *@var{reply_id})
+@end deftypefun
+@sp 1
+
+As mentioned above, servers can send replies to messages broadcasted by clients.
+This is done by calling function @code{gpdgc_send_reply_to_client}.
+
+@deftypefun {int} gpdgc_send_reply_to_client(gpdgc_server @var{server}, @
+        unsigned long @var{id}, void *@var{message}, size_t @var{size}, @
+        struct sockaddr *@var{client});
+@end deftypefun
+
+@node Group management
+@section Group management
+
+Contrary to broadcasting messages,
+ only clients may request modification of the group.
+Moreover, when a public key has been specified as trusted by the group
+ (parameter @var{trusted_key}, @pxref{Group initialisation}),
+ only clients who knows the corresponding private key are able to request
+ group modification.
+In this case, the private key must be specified
+ using parameter @var{trusted_key} for every request.
+This parameter must be set to @code{NULL} otherwise.
+
+The functions @code{gpdgc_add_to_view} and @code{gpdgc_remove_from_view} allow
+ respectively to add and to remove a server to/from a group.
+Note that, when adding a server,
+ it is necessary to specify the public key of the new server
+ if and only if other servers in the group already specify a public key.
+When this is not the case, the parameter @var{key} must be set to @code{NULL}.
+
+@deftypefun {int} gpdgc_add_to_view@
+(gpdgc_client @var{client}, struct sockaddr *@var{address},@
+gcry_sexp_t @var{key}, gcry_sexp_t @var{trusted_key})
+@end deftypefun
+
+@deftypefun {int} gpdgc_remove_from_view@
+(gpdgc_client @var{client}, struct sockaddr *@var{address},@
+ gcry_sexp_t @var{trusted_key})
+@end deftypefun
+@sp 1
+
+Note that after the exclusion has been notified to the excluded server
+ (@pxref{Group monitoring}), the data structure corresponding to the
+ server can be safely freed from memory.
+This is precisely the role of function @code{gpdgc_close_server}. 
+
+@deftypefun {void} gpdgc_close_server(gpdgc_server @var{server})
+@end deftypefun
+@sp 1
+
+For the sake of security, periodically updating the key that is trusted 
+ to modify the group, might be necessary.
+Function @code{gpdgc_update_trusted_key} is dedicated to this purpose;
+ the new public key to be trusted being specified with parameter @var{new_key}.
+
+@deftypefun {int} gpdgc_update_trusted_key@
+(gpdgc_client @var{client},@
+ gcry_sexp_t @var{new_key}, gcry_sexp_t @var{trusted_key});
+@end deftypefun
+
+@node Group monitoring 
+@section Group monitoring
+
+The main mecanism for monitoring the state of the group is provided by 
+ the callback function @var{inform}
+ (@pxref{Group initialisation} and @pxref{Group subscriptions}).
+This function is called each time a change occurs in the group.
+The following six events may occur:
+
+@itemize @bullet
+@item @code{GPDGC_OUT_OF_MEMORY}
+ when lack of memory is detected on local server
+@item @code{GPDGC_NEW_TRUSTED_KEY}
+ when a new trusted key is considered by the group
+@item @code{GPDGC_SUSPISCION}
+ when a server is suspected to be byzantine of crashed
+@item @code{GPDGC_VIEW_EXCLUSION}
+ when local server has been excluded from the group
+@item @code{GPDGC_VIEW_INIT}
+ when local server is included in a group
+@item @code{GPDGC_VIEW_UPDATE}
+ when the group has been modified
+@end itemize
+
+The actual state of the group can be then obtained with dedicated methods. 
+More specifically,
+ the current view (methods @code{gpdgc_get_current_view} 
+  and @code{gpdgc_get_current_observed_view}),
+ the list of processes currently being suspected to have crash
+  (methods @code{gpdgc_get_crash_suspiscions}
+  and @code{gpdgc_get_observed_crash_suspiscions}),
+ and the list of processes currently being suspected to be byzantine
+  (methods @code{gpdgc_get_byzantine_suspiscions}
+  and @code{gpdgc_get_observed_byzantine_suspiscions}),
+ can be obtained at any time.
+Note that this is the responsability of the caller to free the returned
+ list using the method @code{g_slist_free} provided by the GLib.
+
+@deftypefun {GSList *}gpdgc_get_current_view@
+(gpdgc_server @var{server})
+@end deftypefun
+@deftypefun {GSList *}gpdgc_get_current_observed_view@
+(gpdgc_client @var{client})
+@end deftypefun
+@sp 1
+
+@deftypefun {GSList *}gpdgc_get_byzantine_suspiscions@
+(gpdgc_server @var{server})
+@end deftypefun
+@deftypefun {GSList *}gpdgc_get_observed_byzantine_suspiscions@
+(gpdgc_client @var{client})
+@end deftypefun
+@sp 1
+
+@deftypefun {GSList *}gpdgc_get_crash_suspiscions@
+(gpdgc_server @var{server})
+@end deftypefun
+@deftypefun {GSList *}gpdgc_get_observed_crash_suspiscions@
+(gpdgc_client @var{client})
+@end deftypefun
+@sp 1
+
+The last monitoring method, @code{gpdgc_get_current_clients},
+ allow a server to obtain the list of current clients.
+Similary to the previous methods, this is the responsability of the caller to
+ free te returned list using method @code{g_slist_free}.
+
+@deftypefun {GSList *}gpdgc_get_current_clients@
+(gpdgc_server @var{server})
+@end deftypefun
+
+@node Memory
+@section Memory
+
+Lack of memory can be the cause of erroneous behaviors.
+Said differently, 
+ lack of memory may turn a correct server into a byzantine server or a crash
+ server.@footnote{In order to avoid arbitrary behavior from 
+ a server on which memory problem occurs, 
+ a server should be stopped as soon as event @code{GPDGC_OUT_OF_MEMORY} occurs.}
+Therefore, memory should be carefully managed in fault tolerant systems.
+This is why, the library provides methods to compute the memory
+ required by our data structures.@footnote{This does not take into account
+ the memory required for the stack, i.e., calling methods and local variables.
+ Such memory needs must also be taken into account when allocating memory.}
+The parameters required by these methods have already been described
+ in @ref{Group initialisation} and @ref{Group subscriptions}.
+
+@deftypefun {size_t} gpdgc_get_server_size@
+(gpdgc_process_fault_model @var{process_model},@
+ gpdgc_channel_fault_model @var{channel_model},@
+ gpdgc_validation_type @var{validation},@
+ int @var{certified_servers},@
+ unsigned int @var{max_servers},@
+ unsigned int @var{max_clients},@
+ unsigned short @var{max_slot},@
+ unsigned long @var{max_cache},@
+ unsigned int @var{max_futures},@
+ unsigned short @var{max_client_replies},@
+ size_t @var{max_message_size},@
+ unsigned int @var{network_buffer_size})
+@end deftypefun
+@sp 1
+
+@deftypefun {size_t} gpdgc_get_client_size@
+(gpdgc_process_fault_model @var{process_model},@
+ gpdgc_channel_fault_model @var{channel_model},@
+ int @var{certified_servers},@
+ unsigned int @var{max_servers},@
+ unsigned long @var{max_pending_messages},@
+ unsigned short @var{max_pending_replies},@
+ size_t @var{max_message_size},@
+ unsigned int @var{network_buffer_size})
+@end deftypefun
+@sp 1
+
+Note that, strictly speaking, the memory usage of a server data structure
+ cannot be bound when @var{process_model} is set to @code{GPDGC_BYZANTINE_MODEL}
+ and @var{validation} to @code{GPDGC_FULL_VALIDATION}.
+In this case, despite the fact that no guarantee can be provided,
+ the value returned by method @code{gpdgc_get_server_size} should be
+ large enough to prevent most of memory problems.
+
+@c **********************************************************
+@c *****************  Architecure Overview  *****************
+@c **********************************************************
+@node Architecture
+@chapter Architecture
+
+This chapter firstly discusses the requirements necessary for the library to
+ behave correctly.
+Then a brief description and formal specification of the main underlying
+ components of the library (on the server side) is provided.
+More information can be find in literature, and the reader is,
+ wherever it is relevant, redirected to references that inspired
+ the implementation of the library.
+
+The current chapter does not discuss directly the client implementation 
+ and the code providing access to the underlying components
+ (see source files @code{client.c} and @code{server.c}).
+No relevant issues regarding these components deserve discussion except
+ those already mentioned in other discussed components.
+
+@menu
+* Requirements::
+* Heard-Of::                    Round mecanism 
+* Consensus::                   Distributed consensus 
+* General broadcast::           Reliable and atomic broadcast 
+* View::                        Group management
+@end menu
+
+@node Requirements
+@section Requirements
+
+The library requires a partially synchronous system:
+ the system alternates between bad periods
+ (in which the system is asynchronous@footnote{In an asynchronous system, 
+ there is no bound on (1) the relative process speeds and (2) the message
+ transmission delays.})
+ and good periods (in which the system is synchronous).
+Good periods are supposed to be sufficiently long for our algorithms to 
+ make progress.
+
+In addition to the requirement on system synchrony,
+ the library requires network channels to implement the @emph{weak reliability}
+  property.@footnote{The library uses the methods
+  @code{sendto} and @code{recvfrom} defined in @code{sys/socket.h}
+  to respectively send and receive message.}
+The abstractions implemented within the library also assumes that channels
+ ensures the @emph{integriy} property.
+
+@itemize 
+@item @strong{Weak Reliability}: 
+if a correct process @var{p} sent an infinite number of messages of type @var{T}
+ to process @var{q},
+ then process @var{q} delivers an infinite number of messages of type @var{T}.
+@item @strong{Integrity}:
+if a process @var{p} delivers a message @var{m} from process @var{q},
+    then process @var{q} previously sent @var{m} to @var{p}.
+@end itemize
+
+Note that the @emph{integrity} property is, by definition, guaranteed 
+ when @emph{secure channels} are considered.
+In the case of @emph{corrupted channels}, the property is ensured as follow.
+Every message sent over the network is signed using the local private key.
+Received messages are considered only when the signature is correct,
+ and discarded otherwise.
+
+@node Heard-Of
+@section Heard-Of
+
+The layer @emph{Heard-Of} implements a basic round mecanism.
+A @emph{round} is composed of two steps.
+Firstly, each server sends a message to all other participants of the round.
+In the second step, each server delivers a (sub)set of the messages
+ sent in first step.
+The delivered set is not necessarily complete
+ (i.e., some messages may be missing), and might be different on each server.
+Rounds are executed iteratively on each server, i.e.,
+ on each server, at any time, at most one round is executed.
+More information can be found in 
+@cite{'The Heard-Of model: Computing in distributed systems with benign faults', 
+ B. Charron-Bost and A. Schiper, 2009}.
+
+Based on our synchrony and network requirements, 
+ the following two predicates on the delivered message sets can be eventually
+ ensured (in good periods).
+These two predicates are necessary conditions
+ for the consensus (@pxref{Consensus}) algorithm to terminate.
+
+@itemize @bullet
+@item @strong{@code{P(GOOD)}}:
+for each correct server @var{p}, the message sent by @var{p} is in the set of
+messages delivered by each correct process @var{q}.
+@item @strong{@code{P(CONS)}}:
+@code{P(GOOD)} holds and
+ the same message set is delivered on every correct process. 
+@end itemize
+
+The implementation of the Heard-Of layer
+ can be found in source file @code{heardof.c}.
+The implementation of predicate @code{P(GOOD)} is described in 
+ @cite{'Consensus in the presence of partial sycnhrony',
+       C. Dwork, N. Lynch and L. Stockmeyer, 1988}.
+This implementation also ensures predicate @code{P(CONS)}
+ when servers may at worst crash.
+In the case of byzantine faults, 
+ the predicate @code{P(CONS)} is statisfied with an algorithm based on 
+ @cite{'Unifying Byzantine Consensus Algorithms with
+ Weak Interactive Consistenty', Z. Milosevic, M. Hutle and A. Schiper, 2009}.
+
+@node Consensus
+@section Consensus
+
+Consensus is a fundamental problem in distribued systems. 
+It basically consists for a set of processes to agree on a common value.
+In the context of the library, servers propose, and therefore also decide on, 
+ a list of number, instead of a single value.
+The list contains one number per server in the group and 
+ one number per client being subscribed to the group.
+Consensus decisions are then used to decide the order on which 
+ totally ordered messages can be delivered (@pxref{General broadcast}).
+ 
+Formally, each consensus instance satisfies the following three properties.
+We denote by@tie{}@math{V^q_p} the value proposed by process @math{p} 
+ corresponding to process @math{q},
+ by @math{D^q} the value decided corresponding to process @math{q},
+ and by @math{f} the number of faulty servers.
+
+@itemize @bullet
+@item @strong{Agreement}:
+no two correct processes decide differently
+@item @strong{Extended Range Validity}:
+for each decided number @math{D^q}, there is at least:
+    @itemize
+    @item one correct process @math{p} that proposed @math{V^q_p}<=@math{D^q}
+    @item f+1 correct processes @math{p} that proposed @math{V^q_p}>=@math{D^q}
+    @end itemize
+@item @strong{Termination}:
+all correct processes eventually decide
+@end itemize
+
+Note that the property @emph{Extended Range Validity} cannot be satisfied in
+ the context of byzantine faults and @code{FULL_VALIDATION}.
+The simpler property @emph{Range Validity} is, instead,
+ implemented in this context.
+As a result, all messages, even reliable messags,
+ must be totally ordered in this context.
+
+@itemize @bullet
+@item @strong{Range Validity}:
+for each decided number @math{D^q}, there is at least:
+    @itemize
+    @item one correct process @math{p} that proposed @math{V^q_p}<=@math{D^q}
+    @item one correct process @math{p} that proposed @math{V^q_p}>=@math{D^q}
+    @end itemize
+@end itemize
+
+The implementation of the consensus layer is avalaible
+ in source file @code{consensus.c}.
+The almost complete description of the implementation can be found in
+ @cite{'Generic Construction of Consensus Algorithms
+ for Benign and Byzantine Faults', O. Rutti, Z.Milosevic and A. Schiper, 2009}.
+Only the deterministic selection of a value has been adapted
+ in order to satisfy the property @emph{Extended Range Validity}
+ (see function @code{gpdgc_select_deterministically_any_value_from_messages}).
+
+@node General broadcast
+@section General broadcast
+
+General broadcast is an extension of the well-known atomic broadcast.
+General broadcast basically allows to broadcast
+ @emph{reliable} and @emph{atomic} messages consistently with group updates 
+ (i.e., all correct servers in a view deliver the same set of messages).
+
+Formally, the general broadcast layer implements the following five 
+ properties.@footnote{Remember that a server is @emph{correct} in a view
+ if and only if 
+ (1) no fault occurs on the server during the view lifetime and
+ (2) the server is not excluded from the view.}
+Note that the property @emph{Total Order} can be obviously ignored for
+ reliable messages.
+
+@itemize
+@item @strong{Validity}:
+if a server @math{p} sends a message @math{m} in view @math{v} and
+    @math{p} is correct in view @math{v} and in all following views, 
+    then server @math{p} eventually delivers message @math{m}.
+
+@item @strong{Agreement}:
+if an honest server @math{p} delivers message @math{m} in view @math{v},
+    then every server @math{q} correct in view @math{v}
+    eventually delivers message @math{m}
+
+@item @strong{Integrity}:
+for any message @math{m}, every honest server delivers message @math{m}
+    at most once and only if @math{m} has been previously broadcast by a
+    server @math{q}
+
+@item @strong{View Coherence}:
+if two honest servers @math{p} and @math{q} deliver a message @math{m}
+    in view @math{v_p} (for server @math{p}) and 
+    view @math{v_q} (for server @math{q}), 
+    then view @math{v_p} is equal to view @math{v_q}
+
+@item @strong{Total Order}:
+if an honest server @math{p} delivers a message @math{m} in view @math{v}
+    before it delivers message @math{m'},
+    then every honest server in view @math{v} delivers message @math{m'}
+    only after it has delivered message @math{m}
+@end itemize
+
+The property @emph{view coherence} can be trivially ensured by ordering all
+ messages, including reliable messages and messages requesting view changes. 
+However, ordering reliable messages is inefficient.
+To the best of our knowledge, no other algorithm implementing general
+ broadcast in the context of byzantine faults exist.
+The algorithm implemented by the library (see source file @code{broadcast.c})
+ is, however, strongly inspired by the algorithm described in 
+@cite{'On the Reduction of Atomic Broadcast to Consensus with Byzantine Faults',
+       Z.Milosevic, M. Hutle and A. Schiper, 2009}.
+
+@node View 
+@section View
+
+The view layer is responsible for the management of group updates and
+ client subscriptions (see source file @file{process.c}).
+The request for group updates, which can be only issued by clients,
+ are managed as atomic messages.
+Roughly speaking, a client issues for each request an atomic message,
+ and the request is applied when the message is locally delivered.
+More details can be found
+ in @cite{'Dynamic Group Communication', A. Schiper, 2002}.
+
+For clients, each unsubscription is processed exactly like a group update, 
+ i.e., using atomic messages.
+On the other hand, subscriptions must be treated differently 
+ since future clients cannot broadcast atomic messages before being subscribed.
+First, the future client sends a network message to all servers of the group.
+Once a server receives such a message,
+ it broadcasts an atomic message requiring the client subscription.
+The client is then locally considered as subscribed by a server as soon as
+ the server delivers the message from at least one non-byzantine server.
+
+The view layer is also responsible to build and send initialisation messages
+ for servers added to the group.
+Such a message contains the actual state of the group: i.e., current servers,
+ current clients, current consensus instance, and current trusted key.
+Once received, the new server considers itself as being part of the group.
+Similarly, the view layer is also responsible for sending the current state 
+ of the group to the clients, so that clients can monitor the group.
+Upon the first delivery of such a message from
+ at least one non-byzantine server, a client considers itself as subscribed. 
+
+@c **********************************************************
+@c *******************  Appendices  *************************
+@c **********************************************************
+
+@node Test Framework
+@appendix Test Framework 
+
+The source files of the library include a test framework.
+The framework allows to run series of tests in order to verify that
+ the library behaves correctly with various configurations.
+A serie of tests is launched with the script @file{test/run_tests.sh}
+ which requires two parameters:
+@itemize
+@item A file describing the tests to be executed:
+ e.g., @file{test/parameters/all_tests})
+@item Value @code{mem-check} or @code{no-check} respectively enables or
+ disables memory check@footnote{The program @file{valgrind} is used
+ for this purpose.}
+@end itemize
+
+@noindent
+@strong{Test description: }
+The file, describing the tests launched by the script @file{test/run_tests.sh},
+ must be structured as follow. 
+Each line, except those starting with character '#', represents a test,
+ and refers to two files respectively defining:
+@itemize
+@item The global parameters of the test; a parameter per line: 
+   @enumerate
+   @item The channel model: @code{secure-channels} or @code{corrupted-channels}
+   @item The process model and use of RSA keys: @code{crash-stop}, 
+         @code{byzantine-with-signatures} or @code{byzantine-without-signatures}
+   @item The consensus validation: @code{no-validation},
+         @code{amnesic-validation} or @code{full-validation}
+   @item The consensus election:
+         @code{no-election} or @code{rotating-coordinator}
+   @item Two files respectively containing the private and public RSA keys
+         corresponding to the trusted key (this parameter is optional)
+   @end enumerate
+@item The processes (servers and clients) implied in the test;
+   a process per line containing seven parameters separated with ';':
+   @enumerate
+   @item the ip address of the process
+   @item the file containing the private key of the process
+   @item the file containing the public key of the process
+   @item the type of processes: @code{I} for servers in initial group,
+         @code{L} for servers added to the group during the test, and
+         @code{C} for clients
+   @item the tick length in milliseconds
+   @item the file defining the scenario executed by the process 
+   @item the byzantine behavior (if any) of the process:
+         @code{corrupted}, @code{malicious} or @code{fakedecider} 
+         @footnote{The behavior are implemented by overwriting
+                   standard behaviors of the library 
+                   (see files in folder @file{test/src/behaviors}),
+                   and are loaded by preempting loading of the library
+                   (see script @file{test/run_test.sh}).
+                   New byzantine behaviors can be, thus, rather easily
+                   implemented on your own.}
+   @end enumerate
+@end itemize
+
+The scenario files (e.g., @file{test/parameters/processes/scenarii/manager})
+ are structured in blocks.
+Blocks are set of actions separated by a line starting with character '-'.
+The following actions can specified.
+Note that, except the first two actions that are executed concurrently at the
+ beginning of the block, all actions are sequentially executed in a block.
+The order of execution is the following:
+@itemize
+@item @code{Abcast} @var{N}: 
+      the local process broadcasts @var{N} atomic messages
+@item @code{Rbcast} @var{N}: 
+      the local process broadcasts @var{N} reliable messages
+@item @code{Add} @var{IP}:
+      the local process issues a request to add process
+      with address @var{IP} to the group
+@item @code{Remove} @var{IP}:
+      the local process issues a request to removes process
+      with address @var{IP} from the group
+@item @code{Update-Key} @var{public-key-file}:
+      the local process issues a request to update the key trusted by the group
+@item @code{Pause} @var{N}:
+      the local process stops during @var{N} milliseconds
+@item @code{Crash}:
+      the local process simulates a crash
+@end itemize
+
+@noindent
+@strong{Test results: }
+The result of each test is stored in a dedicated sub folder
+ (located in folder @file{test/output}).
+Each test folder contains:
+@enumerate
+@item an archive @file{log.tar.gz} of all the logs generated during the test
+@item a folder @file{stderr} containing the errors that occur during the test
+@item a folder @file{stdout} containing the messages delivered during the test,
+ and the monitoring event that occur during the tests
+@end enumerate
+
+Based on this information, anyone is able to verify that the library behaves
+ correctly during a test. 
+The verification can be however automatize by running 
+ the script @file{test/check_tests.sh} which takes the same parameter values
+ as the script @file{test/run_tests.sh} that generates the test results.
+
+@c **********************************************************
+@c *************  Appendices (license etc.)  ****************
+@c **********************************************************
+
+@node Copying
+@unnumbered GNU Affero General Public License
+
+@include agpl.texi
+
+@bye
+
+@c  LocalWords:  int HD

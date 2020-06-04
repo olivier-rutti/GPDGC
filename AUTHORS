@@ -1,0 +1,32 @@
+Library: Libgpdgc
+Maintainer: Olivier Rütti <olivier.rutti@opengroupware.ch>
+Bug reports: <olivier.rutti@opengroupware.ch>
+License (library): AGPLv3+
+License (manual and tools): AGPLv3+
+
+Libgpdbc is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of
+the License, or (at your option) any later version.
+
+List of Copyright holders
+=========================
+
+  Copyright (C) 2020 Olivier Rütti 
+
+
+Authors
+=======
+
+LIBGPDGC       Olivier Rütti    2020-08-01
+olivier.rutti@opengroupware.ch
+Designed and implemented Libgpdgc.
+
+
+ This file is free software; as a special exception the author gives
+ unlimited permission to copy and/or distribute it, with or without
+ modifications, as long as this notice is preserved.
+
+ This file is distributed in the hope that it will be useful, but
+ WITHOUT ANY WARRANTY, to the extent permitted by law; without even the
+ implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.

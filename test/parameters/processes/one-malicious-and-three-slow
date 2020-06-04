@@ -1,0 +1,9 @@
+127.0.0.1:5500;keys/p0_rsa;keys/p0_rsa.pub;I;350;scenarii/standard;
+127.0.0.1:5511;keys/p1_rsa;keys/p1_rsa.pub;I;250;scenarii/minimal;malicious
+127.0.0.1:5522;keys/p2_rsa;keys/p2_rsa.pub;I;350;scenarii/standard;
+127.0.0.1:5533;keys/p3_rsa;keys/p3_rsa.pub;I;250;scenarii/standard;
+127.0.0.1:5544;keys/p4_rsa;keys/p4_rsa.pub;I;300;scenarii/standard;
+127.0.0.1:5555;keys/p5_rsa;keys/p5_rsa.pub;I;250;scenarii/standard;
+127.0.0.1:5566;keys/p6_rsa;keys/p6_rsa.pub;L;250;scenarii/standard;
+127.0.0.1:6600;keys/p7_rsa;keys/p7_rsa.pub;C;250;scenarii/standard;
+127.0.0.1:6611;keys/p8_rsa;keys/p8_rsa.pub;C;250;scenarii/manager;

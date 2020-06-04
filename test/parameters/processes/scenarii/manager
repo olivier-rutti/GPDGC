@@ -1,0 +1,11 @@
+Abcast 100
+Rbcast 100
+Add 127.0.0.1:5566
+-------------------------------------------
+Abcast 100
+Rbcast 100
+Remove 127.0.0.1:5511
+Update-Key ../../models/trusted_key_rsa.pub 
+-------------------------------------------
+Abcast 100
+Rbcast 100

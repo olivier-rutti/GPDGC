@@ -1,0 +1,61 @@
+    Libgpdgc - The GNU practical dynamic Group communication library 
+    ==================================================================
+                             Version 1.0
+
+          Copyright 2020      Olivier Rütti 
+
+
+* INTRODUCTION
+
+  Libgpdgc is a library providing group communication abstractions that are
+  tolerant to byzanzine faults (e.g., malicious processes).
+  Therefore, libgpdgc can be used to build fault tolerant distributed systems.
+
+  Libgpdgc is Free Software (meaning that it respects your freedom). It
+  can be freely used, modified and distributed under the terms of the
+  GNU Affero General Public License.
+
+
+* BUILD INSTRUCTIONS
+
+  Libgpdbc depends on the following Gnu packages:
+
+    glib-2.0     (https://developer.gnome.org/glib/)
+    libgcrypt    (https://gnupg.org/ftp/gcrypt/libgcrypt/)
+
+  You should get the latest versions of course, the Libgpdgc configure
+  script complains if a version is not sufficient.
+
+  After building and installing the above packages, you may continue with
+  installation. As with all packages, you just have to do
+
+    ./configure
+    make
+    make install
+
+
+* DOCUMENTATION
+
+  The complete documentation is in the texinfo manual named
+  `gpdgc.info'.  Run "info gpdgc" to read it.  If you want a a
+  printable copy of the manual, change to the "doc" directory and
+  enter "make pdf" For a HTML version enter "make html" and point your
+  browser to gpdgc.html/index.html. 
+
+
+* CONTACTS
+  
+  See the file AUTHORS.
+
+
+# This file is Free Software; as a special exception the authors gives
+# unlimited permission to copy and/or distribute it, with or without
+# modifications, as long as this notice is preserved. For conditions
+# of the whole package, please see the file COPYING.  This file is
+# distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY, to the extent permitted by law; without even the implied
+# warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+#
+# Local Variables:
+# mode:org
+# End:
