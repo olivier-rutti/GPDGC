@@ -496,6 +496,7 @@ gpdgc_process *gpdgc_create_process(struct sockaddr *address,
     result->delivered_containers = NULL;
     result->undelivered_containers = NULL;
     result->last_view_aware = 0;
+    result->removal_phase = 0;
     return result;
 }
 
@@ -534,15 +535,46 @@ gpdgc_process *gpdgc_get_server(gpdgc_iserver *server, struct sockaddr *address)
 
 
 /* Find a process that is synchronized with the distributed clock */
+GSList *gpdgc_get_soon_removed(gpdgc_iserver *server)
+{
+    GSList *result = NULL;
+    GSList *client_iterator = server->clients;
+    while (client_iterator != NULL)
+    {
+        gpdgc_process *client = client_iterator->data;
+        client_iterator = client_iterator->next;
+
+        GSList *container_iterator = client->undelivered_containers;
+        while (container_iterator != NULL)
+        {
+            gpdgc_container *container = container_iterator->data;
+            container_iterator = container_iterator->next;
+
+            if ((container->content_type == GPDGC_REMOVE_SERVER_MESSAGE_TYPE)
+                    && (container->flags & GPDGC_ORDERED_CONTAINER_FLAG))
+            {
+                struct sockaddr *rm = gpdgc_peek_address(container->content, 0);
+                result = g_slist_append(result, rm);
+            }
+        }
+    }
+    return result;
+}
 gpdgc_process *gpdgc_get_synchronized_server(gpdgc_iserver *server)
 {
     // NB: Synchronizing on the biggest group as possible improves performance,
     //      especially in the case of big differences in process speeds
-    //     This explains why synchronisation is made on n-b processes
+    //     This explains why synchronisation is made on n-b processes, where n
+    //      is the number of servers excluding those that will be soon removed,
     //      instead of 2b+1 processes as suggested in paper [DLS 88]
     unsigned int max_faulty = gpdgc_get_max_faulty(server);
-    unsigned int quorum = gpdgc_is_byzantine_model(server)
-        ? g_slist_length(server->servers) - max_faulty - 1 : 0;
+    unsigned int quorum = 0;
+    GSList *soon_removed = NULL;
+    if (gpdgc_is_byzantine_model(server))
+    {
+        quorum = g_slist_length(server->servers) - max_faulty - 1;
+        soon_removed = gpdgc_get_soon_removed(server);
+    }
 
     gpdgc_process *result = NULL;
     GSList *tmp_iterator = server->servers;
@@ -562,8 +594,9 @@ gpdgc_process *gpdgc_get_synchronized_server(gpdgc_iserver *server)
                 gpdgc_process *cmp = cmp_iterator->data;
                 cmp_iterator = cmp_iterator->next;
 
-                if (gpdgc_cmp_clock(tmp->phase, tmp->round, tmp->step,
-                            cmp->phase, cmp->round, cmp->step) <= 0)
+                if ((gpdgc_cmp_clock(tmp->phase, tmp->round, tmp->step,
+                                cmp->phase, cmp->round, cmp->step) <= 0)
+                        || gpdgc_contains_address(soon_removed, cmp->address))
                 {
                     synchronized_count ++; 
                 }
@@ -575,6 +608,7 @@ gpdgc_process *gpdgc_get_synchronized_server(gpdgc_iserver *server)
             }
         }
     }
+    g_slist_free(soon_removed);
     return result;
 }
 
