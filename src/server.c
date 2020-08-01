@@ -915,7 +915,7 @@ void *gpdgc_periodically_resend(void *argument)
                 {
                     gpdgc_leave_stack(server);
                     gpdgc_enter_stack_when_few_output(server);
-                    gpdgc_check_end_of_heardof_step(server);
+                    gpdgc_check_end_of_heardof_step(server, 1);
                 }
             }
 

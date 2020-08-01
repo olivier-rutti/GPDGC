@@ -40,7 +40,7 @@
 #define GPDGC_ROUND_MESSAGE_RECEIVED_FLAG        2
 
 /* Check if the current heard-of step can be terminated */
-void gpdgc_check_end_of_heardof_step(gpdgc_iserver *server);
+void gpdgc_check_end_of_heardof_step(gpdgc_iserver *server, int late_sync);
 
 /* Start a Heard-Of round (identified with the phase and the round number)
  * NB: (1) The predicate P(CONS) is eventually guaranteed when

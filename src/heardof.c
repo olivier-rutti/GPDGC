@@ -445,7 +445,7 @@ void *gpdgc_write_round(gpdgc_process *server,
     }
     return result;
 }
-void gpdgc_check_end_of_heardof_step(gpdgc_iserver *server)
+void gpdgc_check_end_of_heardof_step(gpdgc_iserver *server, int late_sync)
 {
     if (!(server->round_flags & GPDGC_ROUND_PENDING_FLAG))
     {
@@ -458,13 +458,9 @@ void gpdgc_check_end_of_heardof_step(gpdgc_iserver *server)
     int cmp_sync_clock = gpdgc_cmp_clock(sync->phase, sync->round, sync->step,
             local->phase, local->round, local->step);
     unsigned int threshold = gpdgc_get_round_threshold(server);
-    unsigned long round_ticks = gpdgc_get_round_ticks(local->round,
-            server->round_period_initial, server->round_period_increment);
-    unsigned long elapsed_ticks = round_ticks - server->step_remaining_ticks;
 
     if (gpdgc_received_all_step_messages(server)
-            || ((cmp_sync_clock > 0)
-                && (elapsed_ticks >= server->round_period_initial))
+            || ((cmp_sync_clock > 0) && late_sync)
             || ((cmp_sync_clock == 0) && (server->step_remaining_ticks == 0)))
     {
         g_debug("%-10s: Current step '%lu:%lu:%lu' is finished",
@@ -944,7 +940,8 @@ void gpdgc_deliver_to_heardof(gpdgc_iserver *server,
         gpdgc_process_message(server, message, *step, sender);
 
         /* Check if the local state now allows to deliver the round messages */
-        gpdgc_check_end_of_heardof_step(server);
+        int late_sync = gpdgc_cmp_process(sender, local) != 0;
+        gpdgc_check_end_of_heardof_step(server, late_sync);
     }
     else if ((message->contents != NULL) && (sender->state == GPDGC_ACTIVE)
             && ((cmp_clock == 0)
