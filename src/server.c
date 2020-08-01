@@ -1627,6 +1627,26 @@ void gpdgc_deliver_to_server_from_known(gpdgc_iserver *server,
         gpdgc_free_message(message);
     }
     else if ((sender->type == GPDGC_SERVER)
+            && (*type == GPDGC_EXCLUDED_MESSAGE_TYPE))
+    {
+        size_t sn_size;
+        unsigned long *view_id = gpdgc_pop_content(message, &sn_size);
+        gpdgc_free_message(message);
+        if (sn_size != sizeof(unsigned long))
+        {
+            g_info("%-10s: Invalid excluded message from '%s' is ignored",
+                    "SERVER", sender->label);
+            free(type);
+            free(view_id);
+            return;
+        }
+
+        g_debug("%-10s: Deliver an excluded message from '%s'",
+                "SERVER", sender->label);
+        gpdgc_deliver_excluded_message(server, *view_id, sender);
+        free(view_id);
+    }
+    else if ((sender->type == GPDGC_SERVER)
             && (*type == GPDGC_HEARDOF_MESSAGE_TYPE))
     {
         g_debug("%-10s: Deliver a message from '%s' to heard-of",
@@ -1748,6 +1768,11 @@ void gpdgc_deliver_to_server_from_unknown(gpdgc_iserver *server,
         g_info("%-10s: Ignore '%u' message from unknown process '%s'",
                 "SERVER", *type, label);
         gpdgc_free_message(message);
+
+        if (server->state == GPDGC_READY)
+        {
+            gpdgc_send_excluded_message(server, address);
+        }
     }
     free(label);
     free(type);

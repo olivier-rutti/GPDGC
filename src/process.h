@@ -125,4 +125,10 @@ void gpdgc_deliver_view_candidate(gpdgc_iserver *server,
 /* Deliver the phase before which cache can be clean according to a server */
 void gpdgc_deliver_clean_cache(gpdgc_iserver *server,
         unsigned long phase, gpdgc_process *origin);
+
+/* Send ignore message */
+int gpdgc_send_excluded_message(gpdgc_iserver *server, struct sockaddr *addr);
+/* Deliver ignore message */
+void gpdgc_deliver_excluded_message(gpdgc_iserver *server,
+        unsigned long view_id, gpdgc_process *sender);
 #endif

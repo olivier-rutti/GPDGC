@@ -79,6 +79,7 @@ typedef struct
     GSList *delivered_containers;
 
     unsigned short last_view_aware; 
+    unsigned short excluded_from_view;
     unsigned long removal_phase;
 } gpdgc_process;
 

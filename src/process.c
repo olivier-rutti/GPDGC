@@ -496,6 +496,7 @@ gpdgc_process *gpdgc_create_process(struct sockaddr *address,
     result->delivered_containers = NULL;
     result->undelivered_containers = NULL;
     result->last_view_aware = 0;
+    result->excluded_from_view = 0;
     result->removal_phase = 0;
     return result;
 }
@@ -1096,6 +1097,7 @@ int gpdgc_add_server(gpdgc_iserver *server, struct sockaddr *address,
     }
     result->phase = phase;
     result->last_view_aware = last_view_aware;
+    result->excluded_from_view = server->view_identifier;
     result->removal_phase = phase;
 
     /* Update containers not already delivered with the new server */
@@ -1469,6 +1471,16 @@ void gpdgc_apply_pending_view_changes(gpdgc_iserver *server)
                 "PROCESS", server->view_identifier,
                 g_slist_length(server->servers));
         gpdgc_signal_event(server, GPDGC_VIEW_UPDATE);
+
+        /* Reset ignore message */
+        GSList *server_iterator = server->servers;
+        while (server_iterator != NULL)
+        {
+            gpdgc_process *iterated = server_iterator->data;
+            server_iterator = server_iterator->next;
+
+            iterated->excluded_from_view = server->view_identifier;
+        }
 
         /* Send init message to added servers */
         gcry_sexp_t key = gpdgc_get_channel_key(server);
@@ -2004,6 +2016,74 @@ void gpdgc_deliver_clean_cache(gpdgc_iserver *server,
             }
             server->previouses = g_slist_remove(server->previouses, old);
             gpdgc_free_process(old);
+        }
+    }
+}
+
+
+/* Send ignore message */
+int gpdgc_send_excluded_message(gpdgc_iserver *server, struct sockaddr *address)
+{
+    unsigned short type = GPDGC_EXCLUDED_MESSAGE_TYPE;
+    unsigned long view_id = server->view_identifier;
+    gpdgc_message *msg = gpdgc_create_message();
+    if ((msg == NULL)
+            || (!gpdgc_push_content(msg, &view_id, sizeof(unsigned long)))
+            || (!gpdgc_push_content(msg, &type, sizeof(unsigned short))))
+    {
+        gpdgc_signal_lack_of_memory(server,
+                "%-10s: Unable to build ignore message", "SERVER");
+        gpdgc_free_message(msg);
+        return 0;
+    }
+
+    gcry_sexp_t key = gpdgc_get_channel_key(server);
+    size_t size = 0;
+    void *buffer = gpdgc_write_contents(msg, key, &size);
+    gpdgc_free_message(msg);
+    if (buffer == NULL)
+    {
+        gpdgc_signal_lack_of_memory(server,
+                "%-10s: Unable to build client reply buffer", "BROADCAST");
+        return 0;
+    }
+
+    char *label = gpdgc_get_address_label(address);
+    g_debug("%-10s: Send excluded message to '%s'", "BROADCAST", label);
+    free(label);
+
+    int result = gpdgc_udp_send(server->socket, buffer, size, address);
+    free(buffer);
+    return result;
+}
+
+
+/* Deliver ignore message */
+void gpdgc_deliver_excluded_message(gpdgc_iserver *server,
+        unsigned long view_id, gpdgc_process *sender)
+{
+    if (gpdgc_cmp_counter(view_id, server->view_identifier) > 0)
+    {
+        sender->excluded_from_view = view_id;
+
+        unsigned short threshold = gpdgc_get_max_byzantine(server) + 1;
+        GSList *server_iterator = server->servers;
+        while ((server_iterator != NULL) && (threshold > 0))
+        {
+            gpdgc_process *iterated = server_iterator->data;
+            server_iterator = server_iterator->next;
+
+            if (gpdgc_cmp_counter(iterated->excluded_from_view,
+                        server->view_identifier) > 0)
+            {
+                threshold--;
+            }
+        }
+
+        if (threshold == 0)
+        {
+            gpdgc_signal_event(server, GPDGC_VIEW_EXCLUSION);
+            gpdgc_internally_close_server(server);
         }
     }
 }
